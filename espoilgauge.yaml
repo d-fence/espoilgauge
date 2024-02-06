@@ -22,14 +22,49 @@ api:
 ota:
   password: ""
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Testespoilgauge Fallback Hotspot"
-    password: !secret ap_password
-
 captive_portal:
-    
+
+uart:
+  rx_pin: GPIO4 # default on esp32-c6 -- connect to US-100 rx
+  tx_pin: GPIO5 # default on esp32-c6 -- connect to US-100 tx
+  baud_rate: 9600
+  debug:
+    direction: RX
+    dummy_receiver: true
+    sequence:
+      - lambda: |-
+          UARTDebug::log_string(direction, bytes);
+          float distance=0;
+          float oil_left=0;
+
+          //Sample binary / hex data
+          if (bytes.size()==2) {
+              distance = (bytes[0] * 256 + bytes[1]) / 10 ;
+              oil_left = id(tank_depth).state - distance;
+              id(binData).publish_state( oil_left );
+          }
+
+number:
+- platform: template
+  name: "Oil Tank Depth"  # Can be set from Homeassistant frontend
+  id: tank_depth
+  min_value: 30
+  max_value: 400
+  step: 1
+  initial_value: 134 # Depth of my own oil tank, sorry
+  unit_of_measurement: "cm"
+  optimistic: true
+
+sensor:
+  - platform: template
+    id: binData
+    update_interval: 60s
+    name: "Oil Gauge"
+    accuracy_decimals: 1
+    unit_of_measurement: "cm"
+
+interval:
+  - interval: 30s
+    then:
+      - uart.write: [0x55]
+      - delay: 500ms
