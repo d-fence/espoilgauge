@@ -12,6 +12,9 @@ esp32:
 # Enable logging
 logger:
 
+packages:
+  wifi: !include wifi.yaml  # include you wifi configuration here
+
 # Enable Home Assistant API
 api:
   password: ""
